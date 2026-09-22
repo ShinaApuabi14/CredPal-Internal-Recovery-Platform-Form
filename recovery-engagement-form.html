@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CredPal Recovery Engagement Log</title>
+<style>
+  :root {
+    --navy: #0b3d91;
+    --navy-dark: #082b66;
+    --accent: #1e88e5;
+    --bg: #f4f6fb;
+    --card: #ffffff;
+    --border: #dfe4ee;
+    --text: #1c2333;
+    --muted: #6b7280;
+    --ok: #1b8a5a;
+    --ok-bg: #e7f6ef;
+    --err: #c0392b;
+    --err-bg: #fdecea;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  header {
+    background: linear-gradient(135deg, var(--navy), var(--navy-dark));
+    color: #fff;
+    padding: 24px 28px;
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+  }
+  header h1 { margin: 0 0 4px; font-size: 22px; }
+  header p { margin: 0; opacity: 0.85; font-size: 14px; }
+
+  .config-bar {
+    background: #fff8e1;
+    border: 1px solid #f0d98c;
+    color: #7a5b00;
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    margin-bottom: 20px;
+    display: none;
+  }
+  .config-bar.show { display: block; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    margin-bottom: 18px;
+  }
+  .card h2 {
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--navy);
+    margin: 0 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px 18px;
+  }
+  @media (max-width: 640px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field.full { grid-column: 1 / -1; }
+  label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  label .req { color: var(--err); margin-left: 2px; }
+  input, select, textarea {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text);
+    width: 100%;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(30,136,229,0.15);
+  }
+  textarea { min-height: 70px; resize: vertical; }
+  select:disabled, input:disabled { background: #f2f3f6; color: var(--muted); }
+  .hint { font-size: 12px; color: var(--muted); }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 6px;
+  }
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 11px 22px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+  }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-primary:hover { background: var(--navy-dark); }
+  .btn-primary:disabled { background: #9fb3d1; cursor: not-allowed; }
+  .btn-secondary { background: transparent; color: var(--navy); border: 1px solid var(--navy); }
+
+  .banner {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    display: none;
+  }
+  .banner.show { display: block; }
+  .banner.ok { background: var(--ok-bg); color: var(--ok); border: 1px solid #b7e4cd; }
+  .banner.err { background: var(--err-bg); color: var(--err); border: 1px solid #f3c4bd; }
+
+  .recent-toggle {
+    background: none;
+    border: none;
+    color: var(--navy);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .recent-body { display: none; margin-top: 14px; }
+  .recent-body.show { display: block; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  th { color: var(--muted); font-weight: 600; background: #f9fafc; position: sticky; top: 0; }
+  .table-scroll { overflow-x: auto; max-height: 340px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+  .muted-center { text-align: center; color: var(--muted); padding: 18px; font-size: 13px; }
+  .spinner-inline { font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>CredPal Recovery Engagement Log</h1>
+    <p>Log every recovery agent engagement against an account. Dropdown options are pulled live from the Google Sheet and can be edited there at any time.</p>
+  </header>
+
+  <div id="configBar" class="config-bar">
+    ⚠️ This form isn't connected to a Google Sheet yet. Open this file, find <code>SCRIPT_URL</code> near the top of the script, and paste in your deployed Apps Script Web App URL. See SETUP-GUIDE.md.
+  </div>
+
+  <form id="entryForm" class="card" autocomplete="off">
+    <h2>Engagement Details</h2>
+    <div class="grid">
+
+      <div class="field">
+        <label>Recovery Agent<span class="req">*</span></label>
+        <select name="Recovery Agent" required></select>
+      </div>
+
+      <div class="field">
+        <label>Account ID<span class="req">*</span></label>
+        <input type="text" name="Account ID" required placeholder="e.g. ACC-10293" />
+      </div>
+
+      <div class="field">
+        <label>Engagement Channel<span class="req">*</span></label>
+        <select name="Engagement Channel" required></select>
+      </div>
+
+      <div class="field">
+        <label>Engagement Status<span class="req">*</span></label>
+        <select name="Engagement Status" required></select>
+      </div>
+
+      <div class="field">
+        <label>Response</label>
+        <select name="Response"></select>
+      </div>
+
+      <div class="field">
+        <label>Payment Reported</label>
+        <select name="Payment Reported"></select>
+      </div>
+
+      <div class="field">
+        <label>Engagement Date<span class="req">*</span></label>
+        <input type="date" name="Engagement Date" required />
+      </div>
+
+      <div class="field">
+        <label>Engagement Time</label>
+        <input type="time" name="Engagement Time" />
+      </div>
+
+      <div class="field">
+        <label>Plan Type</label>
+        <select name="Plan Type"></select>
+      </div>
+
+      <div class="field">
+        <label>Plan Amount</label>
+        <input type="number" step="0.01" min="0" name="Plan Amount" placeholder="₦" />
+      </div>
+
+      <div class="field">
+        <label>Down-payment</label>
+        <input type="number" step="0.01" min="0" name="Down-payment" placeholder="₦" />
+      </div>
+
+      <div class="field">
+        <label>Down-payment Date</label>
+        <input type="date" name="Down-payment Date" />
+      </div>
+
+      <div class="field">
+        <label>Next Payment Date</label>
+        <input type="date" name="Next Payment Date" />
+      </div>
+
+      <div class="field">
+        <label>Next Follow-up Date</label>
+        <input type="date" name="Next Follow-up Date" />
+      </div>
+
+      <div class="field">
+        <label>Changes Current Arrangement</label>
+        <select name="Changes Current Arrangement"></select>
+      </div>
+
+      <div class="field">
+        <label>Evidence Link/Reference</label>
+        <input type="text" name="Evidence Link/Reference" placeholder="Drive link, screenshot ref, ticket #" />
+      </div>
+
+      <div class="field full">
+        <label>Contact or Visit Notes</label>
+        <textarea name="Contact or Visit Notes" placeholder="Summary of the conversation or visit..."></textarea>
+      </div>
+
+    </div>
+
+    <div class="actions" style="margin-top:18px;">
+      <button type="submit" id="submitBtn" class="btn-primary">Submit Engagement</button>
+      <button type="button" id="resetBtn" class="btn-secondary">Clear Form</button>
+      <span id="listsStatus" class="spinner-inline"></span>
+    </div>
+
+    <div id="banner" class="banner" style="margin-top:14px;"></div>
+  </form>
+
+  <div class="card">
+    <button type="button" id="recentToggle" class="recent-toggle">
+      <span id="recentCaret">▸</span> Recent Submissions
+    </button>
+    <div id="recentBody" class="recent-body">
+      <div class="table-scroll">
+        <table id="recentTable">
+          <thead><tr id="recentHead"></tr></thead>
+          <tbody id="recentTbody">
+            <tr><td class="muted-center">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // -------------------------------------------------------------------
+  // CONFIG — paste your deployed Apps Script Web App URL below.
+  // Deploy > New deployment > Web app > Execute as: Me > Who has access: Anyone
+  // -------------------------------------------------------------------
+  const SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+
+  const DROPDOWN_FIELDS = [
+    "Recovery Agent",
+    "Engagement Channel",
+    "Engagement Status",
+    "Response",
+    "Payment Reported",
+    "Plan Type",
+    "Changes Current Arrangement"
+  ];
+
+  const form = document.getElementById("entryForm");
+  const banner = document.getElementById("banner");
+  const submitBtn = document.getElementById("submitBtn");
+  const listsStatus = document.getElementById("listsStatus");
+  const configBar = document.getElementById("configBar");
+
+  function isConfigured() {
+    return SCRIPT_URL && SCRIPT_URL.indexOf("PASTE_") !== 0;
+  }
+
+  function showBanner(kind, message) {
+    banner.className = "banner show " + kind;
+    banner.textContent = message;
+  }
+
+  function clearBanner() {
+    banner.className = "banner";
+    banner.textContent = "";
+  }
+
+  function populateSelect(select, options, placeholder) {
+    select.innerHTML = "";
+    const optPlaceholder = document.createElement("option");
+    optPlaceholder.value = "";
+    optPlaceholder.textContent = placeholder;
+    select.appendChild(optPlaceholder);
+    options.forEach(function (val) {
+      const opt = document.createElement("option");
+      opt.value = val;
+      opt.textContent = val;
+      select.appendChild(opt);
+    });
+  }
+
+  async function loadLists() {
+    if (!isConfigured()) {
+      configBar.classList.add("show");
+      DROPDOWN_FIELDS.forEach(function (name) {
+        const select = form.querySelector('[name="' + cssEscape(name) + '"]');
+        if (select) populateSelect(select, [], "Connect Sheet to load options");
+      });
+      return;
+    }
+    listsStatus.textContent = "Loading dropdown options…";
+    try {
+      const res = await fetch(SCRIPT_URL + "?action=getLists");
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Failed to load lists");
+      DROPDOWN_FIELDS.forEach(function (name) {
+        const select = form.querySelector('[name="' + cssEscape(name) + '"]');
+        const options = (data.lists && data.lists[name]) || [];
+        if (select) populateSelect(select, options, "Select " + name + "…");
+      });
+      listsStatus.textContent = "";
+    } catch (err) {
+      listsStatus.textContent = "";
+      showBanner("err", "Could not load dropdown options from the Sheet: " + err.message);
+    }
+  }
+
+  function cssEscape(str) {
+    return str.replace(/(["\\])/g, "\\$1");
+  }
+
+  function formToEntry() {
+    const entry = {};
+    new FormData(form).forEach(function (value, key) {
+      entry[key] = value;
+    });
+    return entry;
+  }
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    clearBanner();
+
+    if (!isConfigured()) {
+      showBanner("err", "Form is not connected to a Google Sheet yet — see the notice above.");
+      return;
+    }
+
+    const entry = formToEntry();
+    if (!entry["Recovery Agent"] || !entry["Account ID"] || !entry["Engagement Channel"] ||
+        !entry["Engagement Status"] || !entry["Engagement Date"]) {
+      showBanner("err", "Please fill in all required fields (marked with *).");
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting…";
+
+    try {
+      const res = await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "submitEntry", entry: entry })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Submission failed");
+
+      showBanner("ok", "Engagement logged successfully.");
+      form.reset();
+      loadLists();
+      if (document.getElementById("recentBody").classList.contains("show")) {
+        loadRecent();
+      }
+    } catch (err) {
+      showBanner("err", "Submission failed: " + err.message);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit Engagement";
+    }
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    form.reset();
+    clearBanner();
+  });
+
+  // ---- Recent submissions ----
+  const recentToggle = document.getElementById("recentToggle");
+  const recentBody = document.getElementById("recentBody");
+  const recentCaret = document.getElementById("recentCaret");
+  let recentLoadedOnce = false;
+
+  recentToggle.addEventListener("click", function () {
+    const show = !recentBody.classList.contains("show");
+    recentBody.classList.toggle("show", show);
+    recentCaret.textContent = show ? "▾" : "▸";
+    if (show && !recentLoadedOnce) {
+      loadRecent();
+      recentLoadedOnce = true;
+    }
+  });
+
+  async function loadRecent() {
+    const thead = document.getElementById("recentHead");
+    const tbody = document.getElementById("recentTbody");
+    if (!isConfigured()) {
+      tbody.innerHTML = '<tr><td class="muted-center">Connect the Sheet to view recent submissions.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = '<tr><td class="muted-center">Loading…</td></tr>';
+    try {
+      const res = await fetch(SCRIPT_URL + "?action=getEntries&limit=15");
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Failed to load entries");
+
+      const entries = data.entries || [];
+      if (entries.length === 0) {
+        thead.innerHTML = "";
+        tbody.innerHTML = '<tr><td class="muted-center">No submissions yet.</td></tr>';
+        return;
+      }
+
+      const cols = Object.keys(entries[0]);
+      thead.innerHTML = cols.map(function (c) { return "<th>" + c + "</th>"; }).join("");
+      tbody.innerHTML = entries.map(function (row) {
+        return "<tr>" + cols.map(function (c) {
+          const v = row[c] === null || row[c] === undefined ? "" : row[c];
+          return "<td>" + String(v).replace(/</g, "&lt;") + "</td>";
+        }).join("") + "</tr>";
+      }).join("");
+    } catch (err) {
+      tbody.innerHTML = '<tr><td class="muted-center">Could not load: ' + err.message + "</td></tr>";
+    }
+  }
+
+  loadLists();
+</script>
+</body>
+</html>
